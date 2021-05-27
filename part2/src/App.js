@@ -3,11 +3,21 @@ import Note from "./components/Note";
 
 const App = (props) => {
   const [notes, setNotes] = useState(props.notes);
-  const [newNote, setNewNote] = useState("New note");
+  const [newNote, setNewNote] = useState("");
+  const [showAll, setShowAll] = useState(true);
 
   const addNote = (e) => {
     e.preventDefault();
-    console.log("button clicked", e.target);
+    const noteObj = {
+      id: notes.length + 1,
+      content: newNote,
+      date: new Date().toISOString(),
+      important: Math.random() < 0.5,
+    };
+    console.log(noteObj);
+    setNotes(notes.concat(noteObj));
+    console.log(notes.concat(noteObj));
+    setNewNote("");
   };
 
   const handleNoteChange = (e) => {
@@ -15,11 +25,19 @@ const App = (props) => {
     console.log(e.target.value);
   };
 
+  const notesToShow = showAll ? notes : notes.filter((note) => note.important);
+  console.log(notesToShow);
+
   return (
-    <div>
+    <div className="container">
       <h1>Notes</h1>
+      <div className="show">
+        <button onClick={() => setShowAll(!showAll)}>
+          Show {showAll ? "important" : "all"}
+        </button>
+      </div>
       <ul>
-        {notes.map((note) => (
+        {notesToShow.map((note) => (
           <Note key={note.id} note={note} />
         ))}
       </ul>

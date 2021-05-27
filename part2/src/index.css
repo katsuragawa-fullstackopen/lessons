@@ -11,3 +11,45 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+h1 {
+  text-transform: capitalize;
+  padding: 50px 20px;
+}
+
+
+form {
+  text-align: center;
+}
+
+form button {
+  margin-left: 20px;
+  width: 70px;
+  height: 2rem;
+}
+
+form input {
+  height: 2em;
+  padding: 0 20px;
+}
+
+.show {
+  text-align: center;
+  width: 200px;
+  margin: 0 auto;
+}
+
+.show button {
+  height: 2rem;
+  width: 150px;
+  color: white;
+  background: #404040;
+  border: 0;
+  border-radius: 20px;
+  margin-bottom: 20px;
+}
+
+.container {
+  width: 70%;
+  margin: auto;
+}
