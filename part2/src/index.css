@@ -53,3 +53,14 @@ form input {
   width: 70%;
   margin: auto;
 }
+
+.note {
+  display: flex;
+  justify-content: space-between;
+}
+
+.importance-btn {
+  height: 20px;
+  min-width: 140px;
+  margin: 5px 0;
+}
