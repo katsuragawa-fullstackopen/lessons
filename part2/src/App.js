@@ -2,10 +2,30 @@ import React, { useEffect, useState } from "react";
 import Note from "./components/Note";
 import noteService from "./services/note";
 
+const Notification = ({ message }) => {
+  const errorStyle = {
+    width: "50%",
+    margin: "auto",
+    textAlign: "center",
+    color: "rgb(207, 90, 90)",
+    fontSize: 16,
+    borderStyle: "solid",
+    borderRadius: 20,
+    padding: 10,
+    marginBottom: 50,
+  };
+  if (message === null) {
+    return null;
+  }
+
+  return <div style={errorStyle}>{message}</div>;
+};
+
 const App = () => {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState("");
   const [showAll, setShowAll] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
     noteService
@@ -49,7 +69,12 @@ const App = () => {
         setNotes(notes.map((note) => (note.id !== id ? note : returnedNote)));
       })
       .catch((error) => {
-        alert(`The note ${note.content} was already deleted from the server.`);
+        setErrorMessage(
+          `The note ${note.content} was already deleted from the server.`
+        );
+        setTimeout(() => {
+          setErrorMessage(null);
+        }, 5000);
         setNotes(notes.filter((note) => note.id !== id));
       });
     console.log(notes);
@@ -60,6 +85,7 @@ const App = () => {
   return (
     <div className="container">
       <h1>Notes</h1>
+      <Notification message={errorMessage} />
       <div className="show">
         <button onClick={() => setShowAll(!showAll)}>
           Show {showAll ? "important" : "all"}
