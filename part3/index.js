@@ -3,6 +3,16 @@ const app = express(); // create an express application
 
 app.use(express.json());
 
+// our middleware to show some infos
+const requestLogger = (request, response, next) => {
+  console.log("Method:", request.method);
+  console.log("Path: ", request.path);
+  console.log("Body: ", request.body);
+  console.log("----");
+  next();
+};
+app.use(requestLogger);
+
 // notes data
 let notes = [
   {
@@ -70,7 +80,7 @@ app.post("/api/notes", (request, response) => {
     id: generateId() + 1,
     content: body.content,
     date: new Date(),
-    important: body.important || false, 
+    important: body.important || false,
     // if both it's false, return false, if important in the body its true, return true (clever!)
   };
 
@@ -88,6 +98,12 @@ app.delete("/api/notes/:id", (request, response) => {
   // 204 if succeed, 404 if not found, but in this case only 204 for simplicity
   response.status(204).end();
 });
+
+// middleware function when none above was called
+const unknownEndpoint = (request, response) => {
+  response.status(404).json({ error: "Unknown endpoint" });
+};
+app.use(unknownEndpoint);
 
 // bind the http server to app variable
 const PORT = 3001;
