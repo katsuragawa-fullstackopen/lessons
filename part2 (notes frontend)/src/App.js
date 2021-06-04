@@ -22,6 +22,7 @@ const Notification = ({ message }) => {
 };
 
 const App = () => {
+  // setup hooks
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState("");
   const [showAll, setShowAll] = useState(true);
@@ -70,7 +71,7 @@ const App = () => {
       })
       .catch((error) => {
         setErrorMessage(
-          `The note ${note.content} was already deleted from the server.`
+          `The note "${note.content}" was already deleted from the server.`
         );
         setTimeout(() => {
           setErrorMessage(null);
