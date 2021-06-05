@@ -1,7 +1,7 @@
 const express = require("express"); // import express - CommonJS format
 const app = express(); // create an express application
-
-app.use(express.json());
+app.use(express.json()); // parse incomming request with json payloads
+app.use(express.static("build")); // serve the static file (frontend in this case)
 
 // our middleware to show some infos
 const requestLogger = (request, response, next) => {
@@ -39,10 +39,11 @@ let notes = [
   },
 ];
 
-// route at the root, response the HTTP request sending hey world
-app.get("/", (request, response) => {
-  response.send("<h1>Hey world</h1>");
-});
+// this get ignored since root is redirected to static
+// // route at the root, response the HTTP request sending hey world
+// app.get("/", (request, response) => {
+//   response.send("<h1>Hey world</h1>");
+// });
 
 // route at api/notes, response the get HTTP request with notes in json format
 // express automatically sets the Content-Type header with the appropriate value of application/json.
