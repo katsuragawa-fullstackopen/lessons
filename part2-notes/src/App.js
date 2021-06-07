@@ -44,13 +44,14 @@ const App = () => {
   const addNote = (e) => {
     e.preventDefault();
     const noteObj = {
-      id: notes.length + 1,
+      // id: notes.length + 1,
       content: newNote,
       date: new Date().toISOString(),
       important: Math.random() < 0.5,
     };
 
     noteService.create(noteObj).then((returnedNote) => {
+      console.log(returnedNote);
       setNotes(notes.concat(returnedNote));
       setNewNote("");
     });
