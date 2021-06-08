@@ -45,14 +45,8 @@ app.get("/api/notes/:id", (request, response, next) => {
 });
 
 // create note
-app.post("/api/notes", (request, response) => {
+app.post("/api/notes", (request, response, next) => {
   const body = request.body;
-
-  if (!body.content) {
-    return response.status(400).json({
-      error: "content missing",
-    });
-  }
 
   const note = new Note({
     content: body.content,
@@ -60,9 +54,12 @@ app.post("/api/notes", (request, response) => {
     date: new Date(),
   });
 
-  note.save().then((savedNote) => {
-    response.json(savedNote);
-  });
+  note
+    .save()
+    .then((savedNote) => {
+      response.json(savedNote);
+    })
+    .catch((error) => next(error));
 });
 
 // delete request by id
@@ -97,13 +94,16 @@ const unknownEndpoint = (request, response) => {
 };
 app.use(unknownEndpoint);
 
-// middleware for error
+// middleware for error, when some request catch a error, sent to the next function, here in this case
 const errorHandler = (error, request, response, next) => {
   console.log(error.message);
 
   if (error.name === "CastError") {
     return response.status(400).send({ error: "Malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).send({ error: error.message });
   }
+
   next(error);
 };
 app.use(errorHandler);
