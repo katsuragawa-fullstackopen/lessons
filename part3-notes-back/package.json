@@ -9,7 +9,8 @@
     "build:ui": "rm -rf build && cd ../part2-notes && npm run build --prod && cp -r build ../part3-notes-back",
     "deploy": "git push heroku main",
     "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push heroku master && npm run deploy",
-    "logs:prod": "heroku logs --tail"
+    "logs:prod": "heroku logs --tail",
+    "lint": "eslint ."
   },
   "author": "Katsuragawa",
   "license": "MIT",
@@ -21,6 +22,8 @@
     "mongoose": "^5.12.13"
   },
   "devDependencies": {
+    "eslint": "^7.28.0",
+    "eslint-plugin-react": "^7.24.0",
     "nodemon": "^2.0.7"
   }
 }
