@@ -12,6 +12,8 @@
 
 
 
+#### Inicializar
+
 Para iniciar um React app:
 
 ```bash
@@ -44,7 +46,9 @@ export default App
 
 Parece que ele retorna HTML mas na verdade é JSX.
 
-Podemos ter vários componentes dentro do React e se usa props para passar informações entre eles.
+#### Props
+
+Podemos ter vários componentes dentro do React e utilizar props para passar informações entre eles.
 
 ```react
 const Hello = (props) => {
@@ -75,6 +79,8 @@ const App = () => {
 
 ### Component state, event handlers
 
+#### useState
+
 Para ter componentes com estados que podem mudar durante o lifecycle dele, podemos usar o state hook do React.
 
 ```react
@@ -96,7 +102,9 @@ const App = () => {
 export default App
 ```
 
-A variável `counter` é inicializado com o state de valor zero e a variável `setCounter` é designado a uma função que é utilizada para modificar esse state. Quando o state sofre mudança, o React re-renderiza o componente.
+A variável `counter` é inicializado com o state de valor zero e a variável `setCounter` é designado a uma função que é utilizada para modificar esse state. Quando o *state* sofre mudança, o React re-renderiza o componente.
+
+#### Event handler
 
 Agora vamos adicionar um botão ao nosso componente que vai incrementando o `counter`.
 
@@ -422,6 +430,8 @@ ReactDOM.render(
 
 Quando o componente *App* é chamado e renderizado pelo *index.js* passamos o *array* de notes como props. Dentro do componente *App*, cada nota é renderizado em uma lista utilizando o método *Array.map*.
 
+#### Keys
+
 É importante também passar uma *key* única para cada *child* gerada pelo método *map*. Para mais leitura pode ir na [página do React](https://reactjs.org/docs/lists-and-keys.html#keys) em que explicam com mais detalhe. Mas basicamente o React precisa disso para identificar quando os itens mudam.
 
 **Obs.** Não usar o ***index*** do item como *key*.
@@ -575,6 +585,8 @@ Quando clicado, o botão inverte o *state* do `showAll`. O conteúdo dentro do b
 
 ### Utilizando um servidor
 
+#### json-server
+
 Na próxima parte iremos trabalhar no *backend*, porém já podemos ir nos familiarizando com a ideia utilizando o *JSON Server*. Criaremos um arquivo chamado ***db.json*** no *root* do diretório contento as notas no formato JSON.
 
 ```json
@@ -609,6 +621,8 @@ No *root* da nossa pasta use o comando `npx json-server --port 3001 --watch db.j
 Por padrão, o *json-server* roda no port 3000, porém como nossa aplicação React está nesse mesmo port, precisa especificar uma outra (3001) para evitar conflito.
 
 Pronto, agora temos um servidor que nos fornece os dados `notes` quando fizermos um *http get request* rodando no endereço http://localhost:3001/notes.  Para acessar uma nota específica é só adicionar o id dela no *request*: http://localhost:3001/notes/:id.
+
+
 
 ### npm
 
@@ -661,6 +675,8 @@ Ela pode ter 3 estados diferentes:
 1. *Pending*: na qual ela ainda não concluiu nem falhou ainda;
 2. *Fulfilled*: quando foi completada e o valor final está disponível;
 3. *Rejected*: quando ocorre um erro e o valor final não pode ser determinado.
+
+#### .then()
 
 Podemos definir um *event handler* para quando o *axios* retorna uma promessa com sucesso, utilizando o método `then`.
 
@@ -738,5 +754,291 @@ render 3 notes
 
 Quando o componente é renderizado pela primeira fez, não ocorreu o *fetch* dos dados ainda. A função dentro do `useEffect` é executado imediatamente depois e realiza o *request*. A resposta do servidor então é repassado para o *state* notes pelo `setNotes`. Essa modificação faz o componente ser re-renderizado.
 
+#### Segundo parâmetro
+
 O `useEffect` recebe mais um parâmetro além da função, nesse caso `[]`. Por padrão, `useEffect` é chamado toda fez que o componente é renderizado, o segundo parâmetro controla esse comportamento. `[]` faz com que seja chamado somente na primeira vez que é carregado.
+
+
+
+### Alterando dados no servidor
+
+#### POST 
+
+Para enviar dados ao servidor vamos adicionar o seguinte bloco de código.
+
+```react
+addNote = event => {
+  event.preventDefault()
+  const noteObject = {
+    content: newNote,
+    date: new Date(),
+    important: Math.random() < 0.5,
+  }
+
+  axios
+    .post('http://localhost:3001/notes', noteObject)
+    .then(response => {
+      setNotes(notes.concat(response.data))
+      setNewNote('')
+    })
+}
+```
+
+Note que removemos o *id*, assim o servidor fica responsável por gerar essa informação. O objeto é enviado utilizando o método *post*, e quando o servidor recebe o *request*, podemos acessar o `response` e em seu `data` está o objeto adicionado. Por vez, chamamos o `setNotes` para modificar o *state* conforme essa adição e o componente é renderizado de novo.
+
+#### PUT
+
+Agora vamos adicionar um botão que altera a importância das notas. No componente *Notes*:
+
+```react
+const Note = ({ note, toggleImportance }) => {
+  const label = note.important
+    ? 'make not important' : 'make important'
+
+  return (
+    <li>
+      {note.content} 
+      <button onClick={toggleImportance}>{label}</button>
+    </li>
+  )
+}
+```
+
+e no *App*:
+
+```react
+const App = () => {
+  const [notes, setNotes] = useState([]) 
+  const [newNote, setNewNote] = useState('')
+  const [showAll, setShowAll] = useState(true)
+
+  // ...
+
+  const toggleImportanceOf = (id) => {
+    const url = `http://localhost:3001/notes/${id}`
+	const note = notes.find(n => n.id === id)
+    const changedNote = { ...note, important: !note.important }
+
+    axios.put(url, changedNote).then(response => {
+      setNotes(notes.map(note => note.id !== id ? note : response.data))
+    })
+  }
+
+  // ...
+
+  return (
+    <div>
+      <h1>Notes</h1>
+      <div>
+        <button onClick={() => setShowAll(!showAll)}>
+          show {showAll ? 'important' : 'all' }
+        </button>
+      </div>      
+      <ul>
+        {notesToShow.map((note, i) => 
+          <Note
+            key={i}
+            note={note} 
+            toggleImportance={() => toggleImportanceOf(note.id)}
+          />
+        )}
+      </ul>
+      // ...
+    </div>
+  )
+}
+```
+
+A primeira linha dentro o `toggleImportanceOf` define um url único para cada nota baseado em seu id. O método *Array.find* encontra a nota que queremos modificar e com base nisso criamos uma nova variável `changedNote` com a importância alterada, assim não altera o *state* da nota original diretamente. Por fim a nota é enviada para o servidor com um *PUT request* e modificamos utilizando o `setNotes` através da resposta recebida do servidor. O `map` filtra de modo que somente a nota que nos interessa seja alterada.
+
+
+
+### Modularizando o projeto
+
+A adição da comunicação com o servidor deixou o componente *App* um pouco abarrotado, vamos separar isso em um módulo em *src/services/notes.js*.
+
+```react
+import axios from 'axios'
+const baseUrl = 'http://localhost:3001/notes'
+
+const getAll = () => {
+  const request = axios.get(baseUrl)
+  return request.then(response => response.data)
+}
+
+const create = newObject => {
+  const request = axios.post(baseUrl, newObject)
+  return request.then(response => response.data)
+}
+
+const update = (id, newObject) => {
+  const request = axios.put(`${baseUrl}/${id}`, newObject)
+  return request.then(response => response.data)
+}
+
+export default { getAll, create, update }
+```
+
+Assim, só precisamos importar o novo módulo em *App.js* e modificar a parte que realiza os *requests*.
+
+```react
+import noteService from './services/notes'
+
+const App = () => {
+  // ...
+
+  useEffect(() => {
+    noteService
+      .getAll()
+      .then(initialNotes => {
+        setNotes(initialNotes)
+      })
+  }, [])
+
+  const toggleImportanceOf = id => {
+    const note = notes.find(n => n.id === id)
+    const changedNote = { ...note, important: !note.important }
+
+    noteService
+      .update(id, changedNote)
+      .then(returnedNote => {
+        setNotes(notes.map(note => note.id !== id ? note : returnedNote))
+      })
+  }
+
+  const addNote = (event) => {
+    event.preventDefault()
+    const noteObject = {
+      content: newNote,
+      date: new Date().toISOString(),
+      important: Math.random() > 0.5
+    }
+
+    noteService
+      .create(noteObject)
+      .then(returnedNote => {
+        setNotes(notes.concat(returnedNote))
+        setNewNote('')
+      })
+  }
+
+  // ...
+}
+```
+
+
+
+### Promessas e erros
+
+O método `then` é executado quando a promessa é completada, podemos adicionar o método `catch` para quando ocorre algum erro.
+
+```react
+axios
+  .get('http://example.com/probably_will_fail')
+  .then(response => {
+    console.log('success!')
+  })
+  .catch(error => {
+    console.log('fail')
+  })
+```
+
+
+
+### Adicionando estilos 
+
+Não vou entrar em muito detalhe, mas tem como passar direto pelo React *inline styles*.
+
+```react
+const Footer = () => {
+  const footerStyle = {
+    color: 'green',
+    fontStyle: 'italic',
+    fontSize: 16
+  }
+  return (
+    <div style={footerStyle}>
+      <br />
+      <em>Note app, Department of Computer Science, University of Helsinki 2021</em>
+    </div>
+  )
+}
+```
+
+
+
+
+
+## Terceira Parte
+
+### Node.js e Express
+
+#### Iniciar a partir de um template
+
+```powershell
+$ npm init
+```
+
+Vamos fazer uma mudança no *package.json* criando um script para iniciar o backend.
+
+```json
+{
+  // ...
+  "scripts": {
+    "start": "node index.js",
+    // ...
+  },
+  // ...
+}
+```
+
+Agora podemos inicializar com `npm start`
+
+#### Express
+
+Express é uma biblioteca pra facilitar a construção do backend.
+
+```powershell
+npm install express
+```
+
+No arquivo *index.js*:
+
+```react
+const express = require('express')
+const app = express()
+
+let notes = [
+  ...
+]
+
+app.get('/', (request, response) => {
+  response.send('<h1>Hello World!</h1>')
+})
+
+app.get('/api/notes', (request, response) => {
+  response.json(notes)
+})
+
+const PORT = 3001
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
+```
+
+*Node.js* utiliza os módulos chamados de ***CommonJS***, não suportando a importação *ES6*, ainda.
+
+No início importamos *express* e criamos uma aplicação express, *app*. A seguir, criamos duas rotas para a aplicação. O primeiro define um *event handler* para toda vez que um *GET* *request* é feito para *"/"* *root*. 
+
+#### Request e response
+
+O *event handler* aceita dois parâmetros, *request* que contém todas as informações do *HTTP request* e o segundo *response* é usado para definir o que o servidor deve devolver para o browser.
+
+Então quando a aplicação recebe um *GET request* para *"/"*, ele devolve enviando uma resposta contendo a *string*  `'<h1>Hello World!</h1>'`.
+
+A segunda rota também define um *event handler*, para o caminho *"/api/notes"* e retorna notes como uma *string* formatada como *JSON*.
+
+#### nodemon
+
+
 
