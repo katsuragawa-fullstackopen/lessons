@@ -10,6 +10,8 @@
 
 ### Introdução ao React
 
+
+
 Para iniciar um React app:
 
 ```bash
@@ -496,11 +498,245 @@ O `value` dentro do *input* é passado como a nova nota toda vez que ocorre `onC
 
 Quando o *button* é clicado e o formulário é enviado, a função `addNote` é executado e cria um novo objeto `noteObject` com o *content* igual ao valor que esta no *input*. O `date` é a data atual formatado como *ISO string*, o `important` é o resultado de uma função aleatória que retorna `true` ou `false` e o `id` é o comprimento mais um da *array*. Após criar esse objeto, chamamos a função `setNotes` e devolvemos uma *array* com o objeto no final dela. Por fim, limpamos o *value* do *input* ao modificar o *state* do `newNotes`.
 
- **NÃO USAR .push(arr)!** Como falamos antes é proibido alterar um *state* diretamente.
+**NÃO USAR .push(arr)!** Como falamos antes é proibido alterar um *state* diretamente.
 
 
 
 ### Filtrando elementos
 
+Vamos adicionar uma funcionalidade que vai mostrar somente as notas com o parâmetro `important: true`.  Primeiro vamos adicionar um *state* que vai ser responsável por determinar quais notas vão ser mostradas.
 
+```react
+import React, { useState } from 'react'
+import Note from './components/Note'
+
+const App = (props) => {
+  const [notes, setNotes] = useState(props.notes)
+  const [newNote, setNewNote] = useState('') 
+  const [showAll, setShowAll] = useState(true)
+
+  // ...
+
+  const notesToShow = showAll
+    ? notes
+    : notes.filter(note => note.important)
+
+  return (
+    <div>
+      <h1>Notes</h1>
+      <ul>
+        {notesToShow.map(note =>
+          <Note key={note.id} note={note} />
+        )}
+      </ul>
+      // ...
+    </div>
+  )
+}
+```
+
+Agora se o *state* de `showAll` for `true`, a variável `notesToShow` recebe todas as notas armazenadas no *state* notes. Caso for `false`, é passado para a variável somente as notas com `important: true`.
+
+Vamos então adicionar um botão responsável por alterar o *state* do `showAll` entre verdadeiro e falso.
+
+```react
+import React, { useState } from 'react' 
+import Note from './components/Note'
+
+const App = (props) => {
+  const [notes, setNotes] = useState(props.notes) 
+  const [newNote, setNewNote] = useState('')
+  const [showAll, setShowAll] = useState(true)
+
+  // ...
+
+  return (
+    <div>
+      <h1>Notes</h1>
+      <div>
+        <button onClick={() => setShowAll(!showAll)}>
+          show {showAll ? 'important' : 'all' }
+        </button>
+      </div>
+      <ul>
+        {notesToShow.map(note =>
+          <Note key={note.id} note={note} />
+        )}
+      </ul>
+      // ...    
+    </div>
+  )
+}
+```
+
+Quando clicado, o botão inverte o *state* do `showAll`. O conteúdo dentro do botão também é alterado: ele fica **show important** caso `showAll` seja `true` e **show all** caso seja `false`.
+
+
+
+### Utilizando um servidor
+
+Na próxima parte iremos trabalhar no *backend*, porém já podemos ir nos familiarizando com a ideia utilizando o *JSON Server*. Criaremos um arquivo chamado ***db.json*** no *root* do diretório contento as notas no formato JSON.
+
+```json
+{
+  "notes": [
+    {
+      "id": 1,
+      "content": "HTML is easy",
+      "date": "2019-05-30T17:30:31.098Z",
+      "important": true
+    },
+    {
+      "id": 2,
+      "content": "Browser can execute only JavaScript",
+      "date": "2019-05-30T18:39:34.091Z",
+      "important": false
+    },
+    {
+      "id": 3,
+      "content": "GET and POST are the most important methods of HTTP protocol",
+      "date": "2019-05-30T19:20:14.298Z",
+      "important": true
+    }
+  ]
+}
+```
+
+Para instalar o *JSON Server* globalmente na máquina é só usar o comando `npm install -g json-server`. Porém não é necessário uma instalação global.
+
+No *root* da nossa pasta use o comando `npx json-server --port 3001 --watch db.json`.
+
+Por padrão, o *json-server* roda no port 3000, porém como nossa aplicação React está nesse mesmo port, precisa especificar uma outra (3001) para evitar conflito.
+
+Pronto, agora temos um servidor que nos fornece os dados `notes` quando fizermos um *http get request* rodando no endereço http://localhost:3001/notes.  Para acessar uma nota específica é só adicionar o id dela no *request*: http://localhost:3001/notes/:id.
+
+### npm
+
+Para utilizar *fetch* e pedir dados para o servidor utilizaremos o *library* chamado ***axios***. Hoje em dia, praticamente qualquer aplicação em JavaScript são definidos utilizando o *node package manager*, ou ***npm***. O nosso projeto criado pelo *create-react-app* também, sendo o arquivo *package.json* tal indicador.
+
+Vamos então instalar o *axios* pelo comando `npm install axios` e ele vai aparecer dentro do *package.json* como uma dependência. Instale também o *json-server*, mas dessa vez como um *development dependency* com o comando `npm install json-server --save-dev`
+
+Obg. Sempre rode os comandos *npm* no *root*.
+
+Adicione um *script* para não ter que usar o comando `npx json-server --port 3001 --watch db.json` toda vez que quiser rodar o servidor.
+
+```json
+{
+  // ... 
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "server": "json-server -p3001 --watch db.json"
+  },
+}
+```
+
+Agora conseguimos rodar só com o comando `npm run server`.
+
+Utilize dois terminais para rodar o React app e o servidor.
+
+
+
+### Axios e promessas
+
+Importe *axios* e mude o *index.js* 
+
+```react
+import axios from 'axios'
+
+const promise = axios.get('http://localhost:3001/notes')
+console.log(promise)
+```
+
+Obs. Quando *index.js* é alterado, o React não recarrega a página sozinho. Para mudar esse comportamento crie um *.env* no *root* e adicione `FAST_REFRESH=false` e reinicie a aplicação.
+
+O *axios* retorna uma **promessa**, que é:
+
+> um objeto representando a conclusão ou falha de uma operação *async*.
+
+Ela pode ter 3 estados diferentes:
+
+1. *Pending*: na qual ela ainda não concluiu nem falhou ainda;
+2. *Fulfilled*: quando foi completada e o valor final está disponível;
+3. *Rejected*: quando ocorre um erro e o valor final não pode ser determinado.
+
+Podemos definir um *event handler* para quando o *axios* retorna uma promessa com sucesso, utilizando o método `then`.
+
+```react
+const promise = axios.get('http://localhost:3001/notes')
+
+promise.then(response => {
+  console.log(response)
+})
+```
+
+O ***JavaScript runtime environment*** chama a função de callback registrado pelo `then`, providenciando como argumento o objeto `response`. Nele contém todas os dados essenciais a resposta de um *HTTP GET request*, como *data, status code e headers*.
+
+Vamos então retirar a variável `notes` que estava *hardcoded* no nosso *index.js* e substituir por um *request*.
+
+```react
+import React from 'react'
+import ReactDOM from 'react-dom'
+import App from './App'
+
+import axios from 'axios'
+
+axios.get('http://localhost:3001/notes').then(response => {
+  const notes = response.data
+  ReactDOM.render(
+    <App notes={notes} />,
+    document.getElementById('root')
+  )
+})
+```
+
+Chamar um *HTTP request* assim pode ser aceitável em algumas circunstâncias, mas o correto é realizar o *fetch* dentro do componente *App*. Isso que faremos à seguir.
+
+
+
+### Effect-hooks
+
+> *The Effect Hook lets you perform side effects in function components.* *Data fetching, setting up a subscription, and manually changing the DOM in React components are all examples of side effects.
+
+Vamos voltar para a versão simples do *index.js* e realizar o *fetch* dentro do componente *App*. 
+
+```react
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import Note from './components/Note'
+
+const App = () => {
+  const [notes, setNotes] = useState([])
+  const [newNote, setNewNote] = useState('')
+  const [showAll, setShowAll] = useState(true)
+
+  useEffect(() => {
+    console.log('effect')
+    axios
+      .get('http://localhost:3001/notes')
+      .then(response => {
+        console.log('promise fulfilled')
+        setNotes(response.data)
+      })
+  }, [])
+  console.log('render', notes.length, 'notes')
+
+  // ...
+}
+```
+
+Vai aparecer no console:
+
+```powershell
+render 0 notes
+effect
+promise fulfilled
+render 3 notes
+```
+
+Quando o componente é renderizado pela primeira fez, não ocorreu o *fetch* dos dados ainda. A função dentro do `useEffect` é executado imediatamente depois e realiza o *request*. A resposta do servidor então é repassado para o *state* notes pelo `setNotes`. Essa modificação faz o componente ser re-renderizado.
+
+O `useEffect` recebe mais um parâmetro além da função, nesse caso `[]`. Por padrão, `useEffect` é chamado toda fez que o componente é renderizado, o segundo parâmetro controla esse comportamento. `[]` faz com que seja chamado somente na primeira vez que é carregado.
 
