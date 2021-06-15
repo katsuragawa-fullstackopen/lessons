@@ -1,23 +1,5 @@
 const mongoose = require("mongoose");
 
-// url to database
-const url = process.env.MONGODB_URI; // mongoDB URI as env variable
-
-// connect to database
-mongoose
-  .connect(url, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    useFindAndModify: false,
-    useCreateIndex: true,
-  })
-  .then(() => {
-    console.log("Connected to MongoDB");
-  })
-  .catch((error) => {
-    console.log("Error connecting to MongoDB", error.message);
-  });
-
 // specify DB shape and date types
 const noteSchema = new mongoose.Schema({
   content: { type: String, minLength: 5, required: true },

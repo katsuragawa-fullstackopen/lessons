@@ -958,8 +958,10 @@ const Footer = () => {
   }
   return (
     <div style={footerStyle}>
-      <br />
-      <em>Note app, Department of Computer Science, University of Helsinki 2021</em>
+    <br />
+    <em>
+      Note app, Department of Computer Science, University of Helsinki 2021
+    </em>
     </div>
   )
 }
@@ -1004,7 +1006,7 @@ npm install express
 
 No arquivo *index.js*:
 
-```react
+```js
 const express = require('express')
 const app = express()
 
@@ -1081,7 +1083,7 @@ E agora rodamos com `npm run dev`.
 
 Vamos adicionar uma rota que retorna ao browser uma única nota.
 
-```react
+```js
 app.get('/api/notes/:id', (request, response) => {
   const id = Number(request.params.id)
   const note = notes.find(note => note.id === id)
@@ -1098,7 +1100,7 @@ O nosso servidor identifica na URL o id da nota e filtra as notas, retornando um
 
 #### Deletando um recurso
 
-```react
+```js
 app.delete('/api/notes/:id', (request, response) => {
   const id = Number(request.params.id)
   notes = notes.filter(note => note.id !== id)
@@ -1111,7 +1113,7 @@ app.delete('/api/notes/:id', (request, response) => {
 
 Para adicionar, precisamos de um *[middleware](https://expressjs.com/en/api.ht	ml)* nativo do *express* chamado *json-parser*. Sem ele o *request body* seria *undefined*.
 
-```react
+```js
 const express = require('express')
 const app = express()
 
@@ -1151,7 +1153,7 @@ O *event handler* salva em uma variável o corpo do *request* e através do mét
 
 São funções para lidar com os objetos *request* e *response*. Dá pra ter vários ao mesmo tempo, porém eles são executados um por um na ordem que foram tomados em uso. Vmos criar um *middleware* que imprime informações sobre todos os *requests* feitos ao servidor. O *middleware* recebe três parâmetros.
 
-```react
+```js
 const requestLogger = (request, response, next) => {
   console.log('Method:', request.method)
   console.log('Path:  ', request.path)
@@ -1169,7 +1171,7 @@ Note que o *json-parser* precisa ser usado **antes** do nosso *middleware*, se n
 
 As funções *middleware* que precisam ser executadas antes das rotas precisam ser usadas antes. Vamos criar uma outra *middleware* pra caso nenhuma rota seja chamada, nesse caso ela precisa ser usada **depois** das rotas.
 
-```react
+```js
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
@@ -1191,12 +1193,12 @@ Como nosso *frontend* está hospedado na porta 3000 e o *backend* no 3001, não 
 
 Precisamos permitir o *request* de diferente origens utilizando o *middleware cors* do *Node.js*. Para instalar é `npm install cors`
 
-```react
+```js
 const cors = require('cors')
 app.use(cors())
 ```
 
-#### Para a internet (backend)
+#### Para a internet | backend
 
 Vamos usar o ***[Heroku](https://devcenter.heroku.com/articles/getting-started-with-nodejs)*** para isso. Primeiro adicione um arquivo chamado Procfile (sem formato) no *root* do projeto que dirá ao Heroku como iniciar a aplicação.
 
@@ -1206,11 +1208,515 @@ web: npm start
 
 E mudar o *PORT* no nosso *index.js*
 
-```react
-const PORT = process.env.PORT || 3001app.listen(PORT, () => {
+```js
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
 ```
 
 Agora só criar um *git repo* e dar *push* para o Heroku.
+
+#### Criar *build* de produção | frontend
+
+Quando faz um deploy, deve ser criar uma *[production build](https://reactjs.org/docs/optimizing-performance.html#use-the-production-build)* e utilizar ela.
+
+```bash
+$ npm run build
+```
+
+Isso cria uma versão otimizada do *frontend*. Podemos agora copiar essa pasta *build* para o *root* do nosso backend e servir ao browser, utilizando um *middleware* que vem com *express*.
+
+```react
+app.use(express.static('build'))
+```
+
+Agora toda vez que nosso servidor recebe um *GET request*, confere se o diretório *build* contém o arquivo correspondente ao endereço do pedido, se sim, ele retorna o arquivo. Ou seja, um *GET* ao endereço *www.blablabla.com/index.html* ou simplesmente *www.blablabla.com*, o *express* retorna nosso aplicativo React. Já os pedidos para */api/notes* é gerido pelo backend.
+
+Já que agora ambos utilizam o mesmo endereço, podemos mudar o `baseUrl` dos nossos serviços para ser relativo.
+
+```react
+import axios from 'axios'
+const baseUrl = '/api/notes'
+const getAll = () => {
+  const request = axios.get(baseUrl)
+  return request.then(response => response.data)
+}
+
+// ...
+```
+
+Obs. Precisa criar uma nova *build* toda vez que altera algo no aplicativo React pra surgir efeito.
+
+#### Scripts para automatizar o deploy do frontend ao Heroku
+
+```json
+{
+  "scripts": {
+    //...
+    "build:ui": "rm -rf build && cd ../part2-notes/ && npm run build --prod && cp -r build ../notes-backend",
+    "deploy": "git push heroku main",
+    "deploy:full": "npm run build:ui && git add . && git commit -m uibuild && git push && npm run deploy",    
+    "logs:prod": "heroku logs --tail"
+  }
+}
+```
+
+Obs. No windows para o *powershell* rodar bash `npm config set script-shell "C:\\Program Files\\git\\bin\\bash.exe"`.
+
+#### Proxy
+
+Agora que o `baseUrl` está relativo, nosso aplicativo React não funciona mais em modo de desenvolvimento, porque os métodos vão realizar *request* ao URL *localhost:3000* em vez de *3001* como estava explícito. Só adicionar um *proxy* que vai mudar o URL.
+
+```json
+{
+  "dependencies": {
+    // ...
+  },
+  "scripts": {
+    // ...
+  },
+  "proxy": "http://localhost:3001"
+}
+```
+
+
+
+### Utilizando banco de dados: MongoDB
+
+#### MongoDB Atlas
+
+Utilizaremos o [MongoDB](https://www.mongodb.com/) para salvar nossos dados indefinitivamente, [Atlas](https://www.mongodb.com/cloud/atlas) é um provedor de MongoDB com funcionalidade gratuítas. 
+
+Após configurar um *cluster*, obteremos um URI que parece assim
+
+```bash
+mongodb+srv://fullstack:<PASSWORD>@cluster0-ostce.mongodb.net/test?retryWrites=true
+```
+
+#### Mongoose
+
+Para facilitar a comunicação com o *database* vamos usar o ***mongoose***.
+
+```bash
+$ npm install mongoose
+```
+
+Vamos criar um novo arquivo *mongo.js* para testar as funcionalidades.
+
+```js
+const mongoose = require('mongoose')
+
+if (process.argv.length < 3) {
+  console.log('Please provide the password as an argument: node mongo.js <password>')
+  process.exit(1)
+}
+
+const password = process.argv[2]
+
+const url =
+  `mongodb+srv://fullstack:${password}@cluster0-ostce.mongodb.net/test?retryWrites=true`
+
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
+
+const noteSchema = new mongoose.Schema({
+  content: String,
+  date: Date,
+  important: Boolean,
+})
+
+const Note = mongoose.model('Note', noteSchema)
+
+const note = new Note({
+  content: 'HTML is Easy',
+  date: new Date(),
+  important: true,
+})
+
+note.save().then(result => {
+  console.log('note saved!')
+  mongoose.connection.close()
+})
+```
+
+Assim, pelo terminal podemos rodar ele com o comando `node mongo.js <password>`.
+
+O nosso programa primeiro conecta com o servidor e passa alguns parâmetros. A seguir, cria um *schema*, que seria o formato dos objetos armazenados no banco de dados. Atribuímos então esse *schema* a um modelo chamado `Note` que servirá como um construtor. 
+
+Construímos um objeto `note` e por fim salvamos no banco de dados, assim que salvar podemos fechar a conexão.
+
+#### Buscando no banco de dados
+
+```js
+Note.find({}).then(result => {
+  result.forEach(note => {
+    console.log(note)
+  })
+  mongoose.connection.close()
+})
+```
+
+O bloco acima busca todas as notas salvas no banco de dados, devido ao *query* vazio que foi passado `{}`, e imprime no console cada uma das notas através do método `forEach()`.
+
+Podemos buscar somente as notas importantes:
+
+```js
+Note.find({ important: true }).then(result => {
+  // ...
+})
+```
+
+### Lidando com erros
+
+Se visitarmos um URL com um id que não existe no banco de dados, receberíamos uma resposta *null*, vamos alterar esse comportamento adicionando uma verificação `if` e também o método  `catch()` para quando a promessa for rejeitada, ou seja, um id mal formatado pelo usuário.
+
+```js
+app.get('/api/notes/:id', (request, response) => {
+  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => {
+      console.log(error)
+			response.status(400).send({ error: 'malformatted id' })
+    })
+})
+```
+
+#### Middleware para erros
+
+Em vez de ter a lógica para lidar com erros em cada *middleware* responsável pelas *requests*, vamos fazer com que toda vez que tem um erro, passamos para o próximo *middleware* com o método `next()`. E então, no final do aplicativo adicionamos um *middleware* com a lógica para tratar os erros.
+
+```js
+app.get('/api/notes/:id', (request, response, next) => {  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))})
+
+// ...
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+// this has to be the last loaded middleware.
+app.use(errorHandler)
+```
+
+Caso seja outro tipo de erro, o *middleware* passa pra frente com o `next()`, de modo que o *express* lida com o *error handler* padrão. Os *middlewares* então são usados assim:
+
+```js
+app.use(express.static('build'))
+app.use(express.json())
+app.use(requestLogger)
+
+app.post('/api/notes', (request, response) => {
+  const body = request.body
+  // ...
+})
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+  // ...
+}
+
+// handler of requests with result to errors
+app.use(errorHandler)
+```
+
+### Outras operações com o banco de dados
+
+#### Deletando um objeto
+
+Dá pra deletar facilmente com o método `findByIdAndRemove()`.
+
+```js
+app.delete('/api/notes/:id', (request, response, next) => {
+  Note.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+```
+
+#### Atualizando um objeto
+
+Para alterar a importância das notas, podemos utilizar o método `findByIdAndUpdate()`.
+
+```js
+app.put('/api/notes/:id', (request, response, next) => {
+  const body = request.body
+
+  const note = {
+    content: body.content,
+    important: body.important,
+  }
+
+  Note.findByIdAndUpdate(request.params.id, note, { new: true })
+    .then(updatedNote => {
+      response.json(updatedNote)
+    })
+    .catch(error => next(error))
+})
+```
+
+Qualquer erro que ocorra é passado para o próximo *middleware* responsável.
+
+Note que para atualizar, não criamos o objeto utilizando o construtor *Note* e sim um simples objeto JavaScript.
+
+Há um outro detalhe importante em relação ao uso do [método `findByIdAndUpdate()`](https://mongoosejs.com/docs/api.html#model_Model.findByIdAndUpdate). Por padrão, o parâmetro o *data base* retorna como resposta o objeto **antes** da modificação. Adicionamos o parâmetro opcional `{ new: true }`, que fará com que nosso manipulador de eventos seja chamado com o **novo** documento modificado, ao invés do original.
+
+
+
+### Validação
+
+Em vez de validar o *body* do request dentro do *middleware*
+
+```js
+app.post('/api/notes', (request, response) => {
+  const body = request.body
+  if (body.content === undefined) {
+    return response.status(400).json({ error: 'content missing' })
+  }
+
+  // ...
+})
+```
+
+Vamos mudar para ser validado antes de ser enviado ao servidor, utilizando *mongoose*. O melhor jeito é adicionar regras de validações no *schema*.
+
+```js
+const noteSchema = new mongoose.Schema({
+  content: {
+    type: String,
+    minLength: 5,
+    required: true
+  },
+  date: { 
+    type: Date,
+    required: true
+  },
+  important: Boolean
+})
+```
+
+`minLength` e `required` são validadores nativos do *mongoose*, podemos criar também [validadores customizados](https://mongoosejs.com/docs/validation.html#custom-validators). Se tentarmos guardar no banco de dados um objeto que não atende os validadores, a operação abrirá uma exceção.
+
+```js
+app.post('/api/notes', (request, response, next) => {  
+  const body = request.body
+
+  const note = new Note({
+    content: body.content,
+    important: body.important || false,
+    date: new Date(),
+  })
+
+  note.save()
+    .then(savedNote => {
+      response.json(savedNote.toJSON())
+    })
+    .catch(error => next(error))})
+```
+
+Vamos adicionar esse erro ao nosso `errorHandler`
+
+```js
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
+
+  next(error)
+}
+```
+
+#### Deploy do backend com o banco de dados
+
+Vamos usar o *dotenv* para salvar as informações sensíveis do banco de dados numa *enviroment variable*.
+
+```bash
+$ npm install dotenv
+```
+
+Criamos um arquivo *.env*.
+
+```bash
+MONGODB_URI='mongodb+srv://fullstack:sekred@cluster0-ostce.mongodb.net/note-app?retryWrites=true'
+PORT=3001
+```
+
+E o nosso *index.js* do backend fica.
+
+```js
+require('dotenv').config()
+const express = require('express')
+const app = express()
+const Note = require('./models/note')
+// ..
+
+const PORT = process.env.PORTapp.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
+```
+
+Para passar as variáveis ao Heroku usamos o comando
+
+```bash
+heroku config:set MONGODB_URI=mongodb+srv://fullstack:secretpasswordhere@cluster0-ostce.mongodb.net/note-app?retryWrites=true
+```
+
+Dai é só gerar uma nova *build* e realizar o push.
+
+
+
+### ESLint
+
+```bash
+$ npm install eslint --save-dev
+```
+
+Essa biblioteca e extensão do VSCode nos ajuda a ter um código mais limpo e evita bugs. Inicializamos com `node_modules/.bin/eslint --init.`
+
+Após responder as perguntas, temos um arquivo de configuração `.eslintrc.js` que podemos ajeitar.
+
+```js
+module.exports = {
+    'env': {
+        'commonjs': true,
+        'es2021': true,
+        'node': true
+    },
+    'extends': 'eslint:recommended',
+    'parserOptions': {
+        'ecmaVersion': 12
+    },
+    'rules': {
+        'indent': [
+            'error',
+            2
+        ],
+        'linebreak-style': [
+            'error',
+            'unix'
+        ],
+        'quotes': [
+            'error',
+            'single'
+        ],
+        'semi': [
+            'error',
+            'never'
+        ],
+        'eqeqeq': 'error',
+            'no-trailing-spaces': 'error',
+    'object-curly-spacing': [
+        'error', 'always'
+    ],
+    'arrow-spacing': [
+        'error', { 'before': true, 'after': true }
+    ]
+    }
+}
+```
+
+É recomendado adicionar um *script* no nosso *package.json* 
+
+```json
+{
+  // ...
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    // ...
+    "lint": "eslint ."
+  },
+  // ...
+}
+```
+
+Agora `npm run lint` vai verificar todos os arquivos do diretório. Mas queremos que ele ignore o *build*, então vamos criar um arquivo chamado [*.eslintignore*](https://eslint.org/docs/user-guide/configuring#ignoring-files-and-directories) contendo `build`.
+
+Podemos adicionar *rules* customizadas ao ESLint também.
+
+```js
+{
+  // ...
+  'rules': {
+    // ...
+    'eqeqeq': 'error',
+    'no-trailing-spaces': 'error',
+    'object-curly-spacing': [
+        'error', 'always'
+    ],
+    'arrow-spacing': [
+        'error', { 'before': true, 'after': true }
+    ]
+  },
+}
+```
+
+
+
+
+
+## Quarta Parte
+
+### Estruturação do Backend
+
+Nessa parte vamos melhorar a estrutura do nosso projeto, iniciando pelos `console.log()`, separando em um módulo em */utils/logger.js*.
+
+```js
+const info = (...params) => {
+  console.log(...params)
+}
+
+const error = (...params) => {
+  console.error(...params)
+}
+
+module.exports = {
+  info, error
+}
+```
+
+A importação das *enviroment variables* também podemos separar no módulo */utils/config.js*.
+
+```js
+require('dotenv').config()
+
+const PORT = process.env.PORT
+const MONGODB_URI = process.env.MONGODB_URI
+
+module.exports = {
+  MONGODB_URI,
+  PORT
+}
+```
 
