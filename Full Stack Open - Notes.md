@@ -745,7 +745,7 @@ const App = () => {
 
 Vai aparecer no console:
 
-```powershell
+```bash
 render 0 notes
 effect
 promise fulfilled
@@ -975,7 +975,7 @@ const Footer = () => {
 
 #### Iniciar a partir de um template
 
-```powershell
+```bash
 $ npm init
 ```
 
@@ -998,7 +998,7 @@ Agora podemos inicializar com `npm start`
 
 Express é uma biblioteca pra facilitar a construção do backend.
 
-```powershell
+```bash
 npm install express
 ```
 
@@ -1040,5 +1040,177 @@ A segunda rota também define um *event handler*, para o caminho *"/api/notes"* 
 
 #### nodemon
 
+Essa biblioteca reinicia a aplicação automaticamente toda vez que detecta uma alteração nos arquivos, durante o desenvolvimento é algo muito prático.
 
+```bash
+$ npm install --save-dev nodemon
+```
+
+`--save-dev` faz com que a dependência do package seja somente para o desenvolvimento e não para produção.
+
+Para iniciar a aplicação utilizando o nodemon `node_modules/.bin/nodemon index.js` ou adicionamos um script para facilitar.
+
+```json
+{
+  // ..
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  // ..
+}
+```
+
+E agora rodamos com `npm run dev`.
+
+#### REST
+
+| URL      | Verbo  | Funcionalidade                                |
+| -------- | ------ | --------------------------------------------- |
+| /notes   | GET    | busca todos os recursos                       |
+| /notes/3 | GET    | busca um recurso único                        |
+| /notes   | POST   | cria um novo recurso*                         |
+| /notes/3 | PUT    | substitui por inteiro o recurso identificado* |
+| /notes/3 | PATCH  | substitui uma parte do recurso identificado*  |
+| /notes/3 | DELETE | remove o recurso identificado                 |
+
+**Baseado no request data*
+
+#### Buscando um recurso único
+
+Vamos adicionar uma rota que retorna ao browser uma única nota.
+
+```react
+app.get('/api/notes/:id', (request, response) => {
+  const id = Number(request.params.id)
+  const note = notes.find(note => note.id === id)
+	
+  if (note) {
+	  response.json(note)    
+  } else {
+    response.status(404).end()
+  }
+})
+```
+
+O nosso servidor identifica na URL o id da nota e filtra as notas, retornando uma *string* formatado como *JSON* na resposta. Caso não ache nenhuma nota com o id passado, retornamos o *status* 404. O `end()` serve para finalizar a resposta sem ter nenhum conteúdo.
+
+#### Deletando um recurso
+
+```react
+app.delete('/api/notes/:id', (request, response) => {
+  const id = Number(request.params.id)
+  notes = notes.filter(note => note.id !== id)
+
+  response.status(204).end()
+})
+```
+
+#### Adicionando um recurso
+
+Para adicionar, precisamos de um *[middleware](https://expressjs.com/en/api.ht	ml)* nativo do *express* chamado *json-parser*. Sem ele o *request body* seria *undefined*.
+
+```react
+const express = require('express')
+const app = express()
+
+app.use(express.json())
+//...
+
+const generateId = () => {
+  const maxId = notes.length > 0
+    ? Math.max(...notes.map(n => n.id))
+    : 0
+  return maxId + 1
+}
+
+app.post('/api/notes', (request, response) => {
+  if (!body.content) {
+    return response.status(400).json({ 
+      error: 'content missing' 
+    })
+  }
+
+  const note = {
+    content: body.content,
+    important: body.important || false,
+    date: new Date(),
+    id: generateId(),
+  }
+  
+  notes = notes.concat(note)
+  
+  response.json(note)
+})
+```
+
+O *event handler* salva em uma variável o corpo do *request* e através do método `concat` adiciona na *array* `notes`. O servidor também é responsável pela criação da id única. Se o conteúdo do *POST request* for vazio retornamos o *status* 400.
+
+#### Middleware
+
+São funções para lidar com os objetos *request* e *response*. Dá pra ter vários ao mesmo tempo, porém eles são executados um por um na ordem que foram tomados em uso. Vmos criar um *middleware* que imprime informações sobre todos os *requests* feitos ao servidor. O *middleware* recebe três parâmetros.
+
+```react
+const requestLogger = (request, response, next) => {
+  console.log('Method:', request.method)
+  console.log('Path:  ', request.path)
+  console.log('Body:  ', request.body)
+  console.log('---')
+  next()
+}
+// ...
+app.use(requestLogger)
+```
+
+O `next()` ao final passa o controle para o próximo *middleware* atender o *request*. 
+
+Note que o *json-parser* precisa ser usado **antes** do nosso *middleware*, se não o *body* seria *undefined*.
+
+As funções *middleware* que precisam ser executadas antes das rotas precisam ser usadas antes. Vamos criar uma outra *middleware* pra caso nenhuma rota seja chamada, nesse caso ela precisa ser usada **depois** das rotas.
+
+```react
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+app.use(unknownEndpoint)
+```
+
+Assim caso o URL esteja incorreto, retornamos o *status* 404 e uma mensagem no formato *JSON* explicando o erro.
+
+
+
+### Fazer deploy do aplicativo na internet
+
+#### *Same origin policy* e CORS
+
+> **Cross-Origin Resource Sharing** ou **CORS** é um mecanismo que permite que recursos restritos em uma página da web sejam recuperados por outro domínio fora do domínio ao qual pertence o recurso que será recuperado.[[1\]](https://pt.wikipedia.org/wiki/Cross-origin_resource_sharing#cite_note-mozhacks_cors-1) Uma página da web pode integrar livremente recursos de diferentes origens, como imagens, folhas de estilo, scripts, iframes e vídeos.[[2\]](https://pt.wikipedia.org/wiki/Cross-origin_resource_sharing#cite_note-2) Certas "solicitações de domínio cruzado", em particular as solicitações Ajax, são proibidas por padrão pela [política de segurança de mesma origem](https://pt.wikipedia.org/wiki/Política_de_mesma_origem).
+
+Como nosso *frontend* está hospedado na porta 3000 e o *backend* no 3001, não é permitido realizar *request* entre eles. 
+
+Precisamos permitir o *request* de diferente origens utilizando o *middleware cors* do *Node.js*. Para instalar é `npm install cors`
+
+```react
+const cors = require('cors')
+app.use(cors())
+```
+
+#### Para a internet (backend)
+
+Vamos usar o ***[Heroku](https://devcenter.heroku.com/articles/getting-started-with-nodejs)*** para isso. Primeiro adicione um arquivo chamado Procfile (sem formato) no *root* do projeto que dirá ao Heroku como iniciar a aplicação.
+
+```bash
+web: npm start
+```
+
+E mudar o *PORT* no nosso *index.js*
+
+```react
+const PORT = process.env.PORT || 3001app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})
+```
+
+Agora só criar um *git repo* e dar *push* para o Heroku.
 
