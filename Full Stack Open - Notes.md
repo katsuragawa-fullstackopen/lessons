@@ -1720,3 +1720,186 @@ module.exports = {
 }
 ```
 
+Separamos os *route handlers*, criando um arquivo *controllers/note.js*.
+
+```js
+const notesRouter = require('express').Router()
+const Note = require('../models/note')
+
+notesRouter.get('/', (request, response) => {
+  Note.find({}).then(notes => {
+    response.json(notes)
+  })
+})
+
+notesRouter.get('/:id', (request, response, next) => {
+  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.post('/', (request, response, next) => {
+  const body = request.body
+
+  const note = new Note({
+    content: body.content,
+    important: body.important || false,
+    date: new Date()
+  })
+
+  note.save()
+    .then(savedNote => {
+      response.json(savedNote)
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.delete('/:id', (request, response, next) => {
+  Note.findByIdAndRemove(request.params.id)
+    .then(() => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+
+notesRouter.put('/:id', (request, response, next) => {
+  const body = request.body
+
+  const note = {
+    content: body.content,
+    important: body.important,
+  }
+
+  Note.findByIdAndUpdate(request.params.id, note, { new: true })
+    .then(updatedNote => {
+      response.json(updatedNote)
+    })
+    .catch(error => next(error))
+})
+
+module.exports = notesRouter
+```
+
+É quase um *copy-paste* do que tinha no *index.js*, porém tem algumas modificações significantes. A primeira é a utilização de um [*router object*](http://expressjs.com/en/api.html#router) na primeira linha e outro é o *url*, em vez de `/api/notes/:id` por exemplo, só precisamos do *url* relativo `/:id`.
+
+Vamos também ter um módulo para os *middleware* que criamos em *utils/middleware.js*.
+
+```js
+const logger = require('./logger')
+
+const requestLogger = (request, response, next) => {
+  logger.info('Method:', request.method)
+  logger.info('Path:  ', request.path)
+  logger.info('Body:  ', request.body)
+  logger.info('---')
+  next()
+}
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+const errorHandler = (error, request, response, next) => {
+  logger.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
+  }
+
+  next(error)
+}
+
+module.exports = {
+  requestLogger,
+  unknownEndpoint,
+  errorHandler
+}
+```
+
+Por fim vamos passar a responsabilidade de se conectar com o *MongoDB* para o *app.js* juntamente com a maior parte do que estava no *index.js*, importando todos os módulos. Esse seria o aplicativo *express*.
+
+```js
+const config = require('./utils/config')
+const express = require('express')
+const app = express()
+const cors = require('cors')
+const notesRouter = require('./controllers/notes')
+const middleware = require('./utils/middleware')
+const logger = require('./utils/logger')
+const mongoose = require('mongoose')
+
+logger.info('connecting to', config.MONGODB_URI)
+
+mongoose.connect(config.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true, useFindAndModify: false, useCreateIndex: true })
+  .then(() => {
+    logger.info('connected to MongoDB')
+  })
+  .catch((error) => {
+    logger.error('error connecting to MongoDB:', error.message)
+  })
+
+app.use(cors())
+app.use(express.static('build'))
+app.use(express.json())
+app.use(middleware.requestLogger)
+
+app.use('/api/notes', notesRouter)
+
+app.use(middleware.unknownEndpoint)
+app.use(middleware.errorHandler)
+
+module.exports = app
+```
+
+E remover a responsabilidade de se conectar com o banco de dados do *models/note.js*.
+
+```js
+const mongoose = require('mongoose')
+
+const noteSchema = new mongoose.Schema({
+  content: {
+    type: String,
+    required: true,
+    minlength: 5
+  },
+  date: {
+    type: Date,
+    required: true,
+  },
+  important: Boolean,
+})
+
+noteSchema.set('toJSON', {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString()
+    delete returnedObject._id
+    delete returnedObject.__v
+  }
+})
+
+module.exports = mongoose.model('Note', noteSchema)
+```
+
+Depois de tudo, agora o *index.js* fica simplesmente:
+
+```js
+const app = require('./app') // the actual Express application
+const http = require('http')
+const config = require('./utils/config')
+const logger = require('./utils/logger')
+
+const server = http.createServer(app)
+
+server.listen(config.PORT, () => {
+  logger.info(`Server running on port ${config.PORT}`)
+})
+```
+
