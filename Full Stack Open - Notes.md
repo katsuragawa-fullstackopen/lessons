@@ -1964,9 +1964,17 @@ TEST_MONGODB_URI=mongodb+srv://fullstack:secret@cluster0-ostce.mongodb.net/note-
 
 Esses são as únicas modificações no código por enquanto.
 
+#### Jest.js
+
+[*Jest*](https://jestjs.io/docs/api) é um framework de testes para *JavaScript* que funciona para projetos em React e Node.
+
+```bash
+$ npm install --save-dev jest
+```
+
 #### supertest
 
-Vamos usar esse *package* para ajudar a escrever os testes.
+Vamos usar esse *package* para ajudar a escrever os testes que interagem com o API.
 
 ```bash
 $ npm install --save-dev supertest
@@ -1975,21 +1983,107 @@ $ npm install --save-dev supertest
 E já vamos criar o primeiro teste em *tests/note_api.test.js*
 
 ```js
-const mongoose = require('mongoose')
-const supertest = require('supertest')
-const app = require('../app')
+const mongoose = require("mongoose");
+const supertest = require("supertest");
+const app = require("../app");
 
-const api = supertest(app)
+// wraps the express app with the supertest function
+const api = supertest(app);
 
-test('notes are returned as json', async () => {
+// create hardcoded notes for test
+const Note = require("../models/note");
+const initialNotes = [
+  {
+    content: "HTML is easy",
+    date: new Date(),
+    important: false,
+  },
+  {
+    content: "Browser can execute only Javascript",
+    date: new Date(),
+    important: true,
+  },
+];
+
+// actions to take before the test
+beforeEach(async () => {
+  // clear database
+  await Note.deleteMany({});
+  // create and save notes
+  let noteObject = new Note(initialNotes[0]);
+  await noteObject.save();
+  noteObject = new Note(initialNotes[1]);
+  await noteObject.save();
+});
+
+// test if notes are returned as json
+test("Notes are returned as json", async () => {
   await api
-    .get('/api/notes')
+    .get("/api/notes")
     .expect(200)
-    .expect('Content-Type', /application\/json/)
-})
+    .expect("Content-Type", /application\/json/);
+});
 
+// test length
+test("All notes are returned", async () => {
+  const response = await api.get("/api/notes");
+  expect(response.body).toHaveLength(initialNotes.length);
+});
+
+// test first note content
+test("A specific note is within the returned notes", async () => {
+  const response = await api.get("/api/notes");
+  const contents = response.body.map((note) => note.content);
+  expect(contents).toContain("Browser can execute only Javascript");
+});
+
+// action after testes are completed
 afterAll(() => {
-  mongoose.connection.close()
-})
+  mongoose.connection.close();
+});
+```
+
+No começo importamos o nosso *express app* e depois o *supertest* utiliza um *superagent* para englobar a aplicação e realizar os *requests*.
+
+Quando executamos os testes o *console* fica bem congestionado, então vamos limpar o */utils/logger.js*.
+
+```js
+const info = (...params) => {
+  if (process.env.NODE_ENV !== 'test') { 
+    console.log(...params)
+  }
+}
+
+const error = (...params) => {
+  if (process.env.NODE_ENV !== 'test') { 
+    console.error(...params)
+  }
+}
+
+module.exports = {
+  info, error
+}
+```
+
+#### Rodando um teste de cada vez
+
+O *Jest* possui o método `test.only()` para executar somente esse teste, mas podemos utilizar o *bash* para especificar qual teste será executado.
+
+Para executar os testes em um arquivo:
+
+```bash
+$ npm test -- tests/note_api.test.js
+```
+
+Para um teste específico:
+
+```bash
+$ npm test -- -t "a specific note is within the returned notes"
+```
+
+Ou utilizando *keyword*:
+
+```bash
+$ npm test -- -t 'notes'
 ```
 
