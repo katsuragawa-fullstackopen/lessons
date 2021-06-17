@@ -1903,3 +1903,93 @@ server.listen(config.PORT, () => {
 })
 ```
 
+
+
+
+
+### Testando o backend
+
+Já que nossa aplicação tem uma lógica simples, não faz ainda sentido criar [**testes unitários**](https://en.wikipedia.org/wiki/Unit_testing). Em alguns casos, pode ser beneficial implementar testes utilizando banco de dados simulados, uma biblioteca para isso seria [*mongo-mock*](https://github.com/williamkapke/mongo-mock).
+
+A nossa aplicação será testada através de seus *REST API*, de modo que inclua o banco de dados. Esse tipo de teste que engloba múltiplos componentes que são analisados como um grupo são chamados [***integration testing***](https://en.wikipedia.org/wiki/Integration_testing).
+
+#### Ambiente de teste
+
+É um costume em *Node* definir o modo de execução da aplicação (produção ou desenvolvimento) com a variável ambiental `NODE_ENV`.
+
+```json
+{
+  // ...
+  "scripts": {
+    "start": "cross-env NODE_ENV=production node index.js",
+    "dev": "cross-env NODE_ENV=development nodemon index.js",
+    // ...
+    "test": "cross-env NODE_ENV=test jest --verbose --runInBand",
+  },
+  // ...
+}
+```
+
+Adicionamos também a opção `--runInBand` no *script npm*  que executa os testes, que impede o *Jest* a rodar testes em paralelo.
+
+Obs. Para os scrips funcionar no Windows, precisa instalar *cross-env*.
+
+```bash
+$ npm install --save-dev cross-env
+```
+
+Agora podemos modificar a aplicação para ter diferentes comportamentos dependendo do modo que foi iniciado. Vamos mudar a configuração da aplicação para usar um *URI* diferente caso esteja rodando um teste.
+
+```js
+require('dotenv').config()
+
+const PORT = process.env.PORT
+
+const MONGODB_URI = process.env.NODE_ENV === 'test' 
+  ? process.env.TEST_MONGODB_URI
+  : process.env.MONGODB_URI
+
+module.exports = {
+  MONGODB_URI,
+  PORT
+}
+```
+
+```bash
+MONGODB_URI=mongodb+srv://fullstack:secred@cluster0-ostce.mongodb.net/note-app?retryWrites=true
+PORT=3001
+
+TEST_MONGODB_URI=mongodb+srv://fullstack:secret@cluster0-ostce.mongodb.net/note-app-test?retryWrites=true
+```
+
+Esses são as únicas modificações no código por enquanto.
+
+#### supertest
+
+Vamos usar esse *package* para ajudar a escrever os testes.
+
+```bash
+$ npm install --save-dev supertest
+```
+
+E já vamos criar o primeiro teste em *tests/note_api.test.js*
+
+```js
+const mongoose = require('mongoose')
+const supertest = require('supertest')
+const app = require('../app')
+
+const api = supertest(app)
+
+test('notes are returned as json', async () => {
+  await api
+    .get('/api/notes')
+    .expect(200)
+    .expect('Content-Type', /application\/json/)
+})
+
+afterAll(() => {
+  mongoose.connection.close()
+})
+```
+
