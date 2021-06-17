@@ -2087,3 +2087,42 @@ Ou utilizando *keyword*:
 $ npm test -- -t 'notes'
 ```
 
+#### Async / Await
+
+Nova sintaxe introduzido no ES7 para remover *callback functions*. Isso:
+
+```js
+Note.find({})
+  .then(notes => {
+    return notes[0].remove()
+  })
+  .then(response => {
+    console.log('the first note is removed')
+    // more code here
+  })
+```
+
+Se torna:
+
+```js
+const main = async () => {
+  const notes = await Note.find({})
+  console.log('operation returned the following notes', notes)
+
+  const response = await notes[0].remove()
+  console.log('the first note is removed')
+}
+main()
+```
+
+Lembrando que `await` precisa ser usado dentro de uma função`async`.
+
+Vamos mudar nosso backend para utilizar essa sintaxe, a rota para buscar todas as notas fica.
+
+```js
+notesRouter.get('/', async (request, response) => { 
+  const notes = await Note.find({})
+  response.json(notes)
+})
+```
+
