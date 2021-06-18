@@ -14,11 +14,18 @@ beforeEach(async () => {
   await Note.deleteMany({});
 
   // create and save notes
-  let noteObject = new Note(helper.initialNotes[0]);
-  await noteObject.save();
+  const noteObjects = helper.initialNotes.map((note) => new Note(note)); // create all note objects as an array
+  const promisseArray = noteObjects.map((note) => note.save()); // save they in the db
+  await Promise.all(promisseArray); // await all promisses in the array
 
-  noteObject = new Note(helper.initialNotes[1]);
-  await noteObject.save();
+
+  /* or you can use a for loop
+  for (let note of helper.initialNotes) {
+    const noteObject = new Note(note);
+    await noteObject.save();
+  } 
+  */
+
 });
 
 test("Notes are returned as json", async () => {
