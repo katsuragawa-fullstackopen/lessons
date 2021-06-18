@@ -1,4 +1,5 @@
 const express = require("express"); // import express - CommonJS format
+require("express-async-errors");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const notesRouter = require("./controllers/notes");
