@@ -27,7 +27,7 @@ mongoose
 
 app.use(cors());
 app.use(express.static("build")); // serve the static file (frontend in this case)
-app.use(express.json()); // parse incomming request with json payloads
+app.use(express.json()); // parse incoming request with json payloads
 
 app.use(middleware.requestLogger);
 
