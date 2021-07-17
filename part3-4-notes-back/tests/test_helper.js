@@ -1,13 +1,15 @@
 // create hardcoded notes for test
-const Note = require("../models/note");
+const Note = require('../models/note');
+const User = require('../models/user');
+
 const initialNotes = [
   {
-    content: "HTML is easy",
+    content: 'HTML is easy',
     date: new Date(),
     important: false,
   },
   {
-    content: "Browser can execute only Javascript",
+    content: 'Browser can execute only Javascript',
     date: new Date(),
     important: true,
   },
@@ -15,7 +17,7 @@ const initialNotes = [
 
 // return an id that for sure won't exist
 const nonExistingId = async () => {
-  const note = new Note({ content: "willremovethissoon", date: new Date() });
+  const note = new Note({ content: 'willremovethissoon', date: new Date() });
   await note.save();
   await note.remove();
 
@@ -28,4 +30,10 @@ const notesInDb = async () => {
   return notes.map((note) => note.toJSON());
 };
 
-module.exports = { initialNotes, nonExistingId, notesInDb };
+// return all users in DB
+const usersInDb = async () => {
+  const users = await User.find({});
+  return users.map((user) => user.toJSON());
+};
+
+module.exports = { initialNotes, nonExistingId, notesInDb, usersInDb };
